@@ -8,27 +8,42 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; transition: background 0.5s; text-align: center; overflow: hidden; }
-        .green { background-color: #28a745; color: white; }
-        .red { background-color: #dc3545; color: white; }
+        /* 基礎樣式與漸層背景 */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; transition: background 0.8s ease; text-align: center; overflow: hidden; color: white; }
         
-        h1 { font-size: 3rem; margin: 0; padding: 0 10px; font-weight: bold; }
-        .info { font-size: 1.6rem; margin: 15px 20px; line-height: 1.4; }
-        .publish-time { font-size: 1.2rem; opacity: 0.8; margin-bottom: 5px; }
-        .timer { font-size: 7rem; font-weight: bold; margin: 10px 0; font-variant-numeric: tabular-nums; }
+        .green { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); }
+        .red { background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%); }
         
-        .button-container { width: 100%; display: flex; flex-direction: column; align-items: center; }
-        button { width: 85%; max-width: 350px; padding: 25px; margin: 15px; font-size: 2rem; border: none; border-radius: 60px; cursor: pointer; box-shadow: 0 8px 25px rgba(0,0,0,0.3); font-weight: bold; transition: transform 0.1s; -webkit-tap-highlight-color: transparent; }
-        button:active { transform: scale(0.95); }
+        /* 內容區塊 */
+        h1 { font-size: 2.8rem; margin: 0; padding: 0 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 15px; text-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .info { font-size: 1.6rem; margin: 20px 20px; line-height: 1.4; opacity: 0.95; }
+        .publish-time { font-size: 1.2rem; opacity: 0.8; margin-bottom: 5px; background: rgba(0,0,0,0.1); padding: 5px 15px; border-radius: 20px; display: inline-block; }
+        .timer { font-size: 8rem; font-weight: 900; margin: 5px 0; font-variant-numeric: tabular-nums; letter-spacing: -3px; text-shadow: 0 4px 20px rgba(0,0,0,0.3); }
         
-        .btn-main { background: white; color: #28a745; }
-        .btn-reset { background: white; color: #dc3545; font-size: 1.6rem; margin-top: 20px; }
+        /* 按鈕樣式美化 */
+        .button-container { width: 100%; display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        button { width: 85%; max-width: 380px; padding: 25px; margin: 15px; font-size: 2.2rem; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.3); font-weight: bold; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; }
+        
+        /* 綠燈時的按鈕 (白色基底) */
+        .btn-main { background: white; color: #1e7e34; }
+        .btn-main:active { transform: translateY(4px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        
+        /* 解除警示按鈕 (亮白色) */
+        .btn-reset { background: white; color: #dc3545; font-size: 1.8rem; margin-top: 30px; border-radius: 20px; animation: pulse 2s infinite; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .car-icon { font-size: 3rem; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.2)); }
     </style>
 </head>
 <body class="green" id="bg">
 
     <div id="display-area">
-        <h1 id="status-text">✅ 道路暢通</h1>
+        <h1 id="status-text"><span class="car-icon">🚙</span> 道路暢通 <span class="car-icon">🚙</span></h1>
         <div id="info-text" class="info">請選擇行進方向</div>
         <div id="publish-time" class="publish-time"></div>
         <div id="timer" class="timer" style="display:none;">05:00</div>
@@ -44,7 +59,7 @@
     </div>
 
     <script>
-        // --- 填入您的 Firebase Config ---
+        // --- 請確認此處填入您的 Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyDAgZJZ7HBbUF4_BfXC2sWr4shkJ4AX0h4",
             authDomain: "road-alert-bd5e1.firebaseapp.com",
@@ -62,7 +77,7 @@
             const now = Date.now();
             const expire = now + (5 * 60 * 1000); 
             const timeStr = new Date(now).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            const msg = (dir === 'up') ? "有車上山中，請勿出發" : "有車下山中，請勿進入";
+            const msg = (dir === 'up') ? "有車上山中，請勿出發" : "有出下山中，請勿進入";
             
             db.set({ 
                 status: 'busy', 
@@ -84,14 +99,13 @@
             const now = Date.now();
             if (data.status === 'busy' && data.expire_time > now) {
                 document.getElementById('bg').className = 'red';
-                document.getElementById('status-text').innerText = (data.direction === 'up' ? "⬆ 上山警示中" : "⬇ 下山警示中");
+                document.getElementById('status-text').innerHTML = (data.direction === 'up' ? "⬆ 上山警示中" : "⬇ 下山警示中");
                 document.getElementById('info-text').innerText = data.message;
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
                 document.getElementById('start-buttons').style.display = 'none';
                 document.getElementById('reset-area').style.display = 'flex';
                 
-                // 僅播報基本警示音/方向語音，移除雨天字眼
                 if (window.lastExpire !== data.expire_time) {
                     const speech = new SpeechSynthesisUtterance(data.message);
                     speech.lang = 'zh-TW';
@@ -101,7 +115,7 @@
                 updateTimer(data.expire_time);
             } else {
                 document.getElementById('bg').className = 'green';
-                document.getElementById('status-text').innerText = "✅ 道路暢通";
+                document.getElementById('status-text').innerHTML = '<span class="car-icon">🚙</span> 道路暢通 <span class="car-icon">🚙</span>';
                 document.getElementById('info-text').innerText = "請選擇行進方向";
                 document.getElementById('publish-time').innerText = "";
                 document.getElementById('timer').style.display = 'none';
