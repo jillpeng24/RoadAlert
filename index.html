@@ -55,8 +55,8 @@
     </div>
 
     <div id="start-buttons" class="button-container">
-        <button class="btn-main" onclick="startAlert('up')">⬆ 我要上山</button>
-        <button class="btn-main" onclick="startAlert('down')">⬇ 我要下山</button>
+        <button class="btn-main" onclick="startAlert('up')">&#11014; 我要上山</button>
+        <button class="btn-main" onclick="startAlert('down')">&#11015; 我要上山</button>
     </div>
 
     <div id="reset-area" class="button-container" style="display:none;">
@@ -104,7 +104,7 @@
             const now = Date.now();
             if (data.status === 'busy' && data.expire_time > now) {
                 document.getElementById('bg').className = 'red';
-                document.getElementById('status-text').innerHTML = (data.direction === 'up' ? "⬆ 上山警示中" : "⬇ 下山警示中");
+                document.getElementById('status-text').innerHTML = (data.direction === 'up' ? "&#11014; 車道警示中" : "&#11015; 車道警示中");
                 document.getElementById('info-text').innerText = data.message;
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
