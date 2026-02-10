@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>產業道路警示系統</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <style>
+        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; transition: background 0.5s; text-align: center; }
+        .green { background-color: #28a745; color: white; }
+        .red { background-color: #dc3545; color: white; }
+        h1 { font-size: 3rem; margin-bottom: 10px; }
+        .info { font-size: 1.5rem; margin-bottom: 20px; }
+        .timer { font-size: 5rem; font-weight: bold; margin: 20px 0; }
+        button { width: 80%; max-width: 300px; padding: 20px; margin: 10px; font-size: 1.5rem; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .btn-up { background: white; color: #dc3545; }
+        .btn-down { background: white; color: #dc3545; }
+    </style>
+</head>
+<body class="green" id="bg">
+
+    <h1 id="status-text">✅ 道路暢通</h1>
+    <div class="info" id="direction-text">請選擇行進方向</div>
+    <div class="timer" id="timer" style="display:none;">05:00</div>
+
+    <button class="btn-up" onclick="startAlert('up')">⬆ 我要上山</button>
+    <button class="btn-down" onclick="startAlert('down')">⬇ 我要下山</button>
+
+    <script>
+        // --- 這裡請填入您複製的 Firebase Config ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDAgZJZ7HBbUF4_BfXC2sWr4shkJ4AX0h4",
+            authDomain: "road-alert-bd5e1.firebaseapp.com",
+            databaseURL: "https://road-alert-bd5e1-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "road-alert-bd5e1",
+            storageBucket: "road-alert-bd5e1.firebasestorage.app",
+            messagingSenderId: "250765942975",
+            appId: "1:250765942975:web:2b6ab9e46074cc5ba4e60a"
+        };
+        // ------------------------------------------
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('road_system');
+
+        // 啟動警示
+        function startAlert(dir) {
+            const expire = Date.now() + (5 * 60 * 1000); // 5分鐘後
+            const msg = (dir === 'up') ? "⚠️ 注意：有車上山中，請勿出發！" : "⚠️ 注意：有車下山中，請勿進入！";
+            db.set({ status: 'busy', direction: dir, expire_time: expire, message: msg });
+        }
+
+        // 監聽資料庫變化
+        db.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (!data) return;
+
+            const now = Date.now();
+            if (data.status === 'busy' && data.expire_time > now) {
+                // 紅色警示狀態
+                document.getElementById('bg').className = 'red';
+                document.getElementById('status-text').innerText = (data.direction === 'up' ? "⬆ 上山中" : "⬇ 下山中");
+                document.getElementById('direction-text').innerText = data.message;
+                document.getElementById('timer').style.display = 'block';
+                
+                // 語音播報 (只在狀態改變瞬間播報一次)
+                if (window.lastExpire !== data.expire_time) {
+                    const speech = new SpeechSynthesisUtterance(data.message);
+                    speech.lang = 'zh-TW';
+                    window.speechSynthesis.speak(speech);
+                    window.lastExpire = data.expire_time;
+                }
+
+                // 開始倒數
+                updateTimer(data.expire_time);
+            } else {
+                // 綠色暢通狀態
+                document.getElementById('bg').className = 'green';
+                document.getElementById('status-text').innerText = "✅ 道路暢通";
+                document.getElementById('direction-text').innerText = "請選擇行進方向";
+                document.getElementById('timer').style.display = 'none';
+            }
+        });
+
+        function updateTimer(expire) {
+            if (window.timerInterval) clearInterval(window.timerInterval);
+            window.timerInterval = setInterval(() => {
+                const remaining = Math.round((expire - Date.now()) / 1000);
+                if (remaining <= 0) {
+                    clearInterval(window.timerInterval);
+                    db.update({ status: 'clear' });
+                } else {
+                    const m = Math.floor(remaining / 60);
+                    const s = remaining % 60;
+                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
