@@ -77,7 +77,7 @@
             const now = Date.now();
             const expire = now + (5 * 60 * 1000); 
             const timeStr = new Date(now).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            const msg = (dir === 'up') ? "有車上山中，請勿出發" : "有出下山中，請勿進入";
+            const msg = (dir === 'up') ? "有車上山中，請勿出發" : "有車下山中，請勿進入";
             
             db.set({ 
                 status: 'busy', 
