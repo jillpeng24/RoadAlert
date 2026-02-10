@@ -8,21 +8,21 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <style>
-        body { font-family: sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; transition: background 0.5s; text-align: center; overflow: hidden; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; transition: background 0.5s; text-align: center; overflow: hidden; }
         .green { background-color: #28a745; color: white; }
         .red { background-color: #dc3545; color: white; }
         
-        h1 { font-size: 2.8rem; margin: 0; padding: 0 10px; }
-        .info { font-size: 1.4rem; margin: 15px 20px; line-height: 1.4; font-weight: bold; }
-        .publish-time { font-size: 1.1rem; opacity: 0.9; margin-bottom: 5px; }
-        .timer { font-size: 6rem; font-weight: bold; margin: 10px 0; font-variant-numeric: tabular-nums; }
+        h1 { font-size: 3rem; margin: 0; padding: 0 10px; font-weight: bold; }
+        .info { font-size: 1.6rem; margin: 15px 20px; line-height: 1.4; }
+        .publish-time { font-size: 1.2rem; opacity: 0.8; margin-bottom: 5px; }
+        .timer { font-size: 7rem; font-weight: bold; margin: 10px 0; font-variant-numeric: tabular-nums; }
         
         .button-container { width: 100%; display: flex; flex-direction: column; align-items: center; }
-        button { width: 85%; max-width: 350px; padding: 22px; margin: 12px; font-size: 1.8rem; border: none; border-radius: 50px; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.3); font-weight: bold; transition: transform 0.1s; }
+        button { width: 85%; max-width: 350px; padding: 25px; margin: 15px; font-size: 2rem; border: none; border-radius: 60px; cursor: pointer; box-shadow: 0 8px 25px rgba(0,0,0,0.3); font-weight: bold; transition: transform 0.1s; -webkit-tap-highlight-color: transparent; }
         button:active { transform: scale(0.95); }
         
         .btn-main { background: white; color: #28a745; }
-        .btn-reset { background: rgba(255, 255, 255, 0.2); color: white; border: 2px solid white; font-size: 1.2rem; padding: 12px; margin-top: 30px; box-shadow: none; }
+        .btn-reset { background: white; color: #dc3545; font-size: 1.6rem; margin-top: 20px; }
     </style>
 </head>
 <body class="green" id="bg">
@@ -40,7 +40,7 @@
     </div>
 
     <div id="reset-area" class="button-container" style="display:none;">
-        <button class="btn-reset" onclick="clearAlert()">❌ 已通過 / 解除警示</button>
+        <button class="btn-reset" onclick="clearAlert()">❌ 已通過 (解除警示)</button>
     </div>
 
     <script>
@@ -54,7 +54,6 @@
             messagingSenderId: "250765942975",
             appId: "1:250765942975:web:2b6ab9e46074cc5ba4e60a"
         };
-        // -------------------------------
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database().ref('road_system');
@@ -63,7 +62,7 @@
             const now = Date.now();
             const expire = now + (5 * 60 * 1000); 
             const timeStr = new Date(now).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-            const msg = (dir === 'up') ? "⚠️ 有車輛上山中，請勿進入！" : "⚠️ 有車輛下山中，請勿進入！";
+            const msg = (dir === 'up') ? "有車上山中，請勿出發" : "有車下山中，請勿進入";
             
             db.set({ 
                 status: 'busy', 
@@ -75,9 +74,7 @@
         }
 
         function clearAlert() {
-            if(confirm("確定要解除警示嗎？請確認道路已空。")) {
-                db.set({ status: 'clear' });
-            }
+            db.set({ status: 'clear' });
         }
 
         db.on('value', (snapshot) => {
@@ -86,18 +83,15 @@
 
             const now = Date.now();
             if (data.status === 'busy' && data.expire_time > now) {
-                // 紅燈狀態
                 document.getElementById('bg').className = 'red';
                 document.getElementById('status-text').innerText = (data.direction === 'up' ? "⬆ 上山警示中" : "⬇ 下山警示中");
                 document.getElementById('info-text').innerText = data.message;
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
-                
-                // 按鈕切換
                 document.getElementById('start-buttons').style.display = 'none';
                 document.getElementById('reset-area').style.display = 'flex';
                 
-                // 語音播報
+                // 僅播報基本警示音/方向語音，移除雨天字眼
                 if (window.lastExpire !== data.expire_time) {
                     const speech = new SpeechSynthesisUtterance(data.message);
                     speech.lang = 'zh-TW';
@@ -106,17 +100,13 @@
                 }
                 updateTimer(data.expire_time);
             } else {
-                // 綠燈狀態
                 document.getElementById('bg').className = 'green';
                 document.getElementById('status-text').innerText = "✅ 道路暢通";
                 document.getElementById('info-text').innerText = "請選擇行進方向";
                 document.getElementById('publish-time').innerText = "";
                 document.getElementById('timer').style.display = 'none';
-                
-                // 按鈕切換
                 document.getElementById('start-buttons').style.display = 'flex';
                 document.getElementById('reset-area').style.display = 'none';
-                
                 if (window.timerInterval) clearInterval(window.timerInterval);
             }
         });
