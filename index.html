@@ -48,7 +48,7 @@
 <body class="green" id="bg">
 
     <div id="display-area">
-        <h1 id="status-text"><span class="car-icon">🚙</span> 道路暢通 <span class="car-icon">🚙</span></h1>
+        <h1 id="status-text"><span class="car-icon">🚙</span>   道路暢通   <span class="car-icon">🚙</span></h1>
         <div id="info-text" class="info">請選擇行進方向</div>
         <div id="publish-time" class="publish-time"></div>
         <div id="timer" class="timer" style="display:none;">05:00</div>
@@ -56,7 +56,7 @@
 
     <div id="start-buttons" class="button-container">
         <button class="btn-main" onclick="startAlert('up')">&#11014; 我要上山</button>
-        <button class="btn-main" onclick="startAlert('down')">&#11015; 我要上山</button>
+        <button class="btn-main" onclick="startAlert('down')">&#11015; 我要下山</button>
     </div>
 
     <div id="reset-area" class="button-container" style="display:none;">
@@ -104,7 +104,7 @@
             const now = Date.now();
             if (data.status === 'busy' && data.expire_time > now) {
                 document.getElementById('bg').className = 'red';
-                document.getElementById('status-text').innerHTML = (data.direction === 'up' ? "&#11014; 車道警示中" : "&#11015; 車道警示中");
+                document.getElementById('status-text').innerHTML = (data.direction === 'up' ? "⚠️ &#8593; 車道警示 ⚠️" : "⚠️ &#8595; 車道警示 ⚠️");
                 document.getElementById('info-text').innerText = data.message;
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
