@@ -104,7 +104,7 @@
             const now = Date.now();
             if (data.status === 'busy' && data.expire_time > now) {
                 document.getElementById('bg').className = 'red';
-                document.getElementById('status-text').innerHTML = (data.direction === 'up' ? "⚠️ &#8593; 車道警示 ⚠️" : "⚠️ &#8595; 車道警示 ⚠️");
+                document.getElementById('status-text').innerHTML = (data.direction === 'up' ? "⚠️&nbsp;&nbsp;車道警示&nbsp;&nbsp;⚠️" : "⚠️&nbsp;&nbsp;車道警示&nbsp;&nbsp;⚠️")
                 document.getElementById('info-text').innerText = data.message;
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
@@ -120,7 +120,7 @@
                 updateTimer(data.expire_time);
             } else {
                 document.getElementById('bg').className = 'green';
-                document.getElementById('status-text').innerHTML = '<span class="car-icon">🚙</span> 道路暢通 <span class="car-icon">🚙</span>';
+                document.getElementById('status-text').innerHTML = '<span class="car-icon">🚙</span>&nbsp;&nbsp;道路暢通&nbsp;&nbsp;<span class="car-icon">🚙</span>';
                 document.getElementById('info-text').innerText = "請選擇行進方向";
                 document.getElementById('publish-time').innerText = "";
                 document.getElementById('timer').style.display = 'none';
