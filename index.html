@@ -8,39 +8,29 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
     <style>
-        /* 調整為明亮的粉綠色漸層 */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; transition: background 0.5s ease; text-align: center; overflow: hidden; color: white; }
-        
-        .green { background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%); } /* 明亮粉綠 */
+        .green { background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%); }
         .red { background: linear-gradient(135deg, #f85032 0%, #e73827 100%); }
         
-        /* 標題與資訊 */
-        h1 { font-size: 2.8rem; margin: 0; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        /* 標題與計時器大小調整 */
+        h1 { font-size: 3.5rem; margin: 0; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .info { font-size: 1.3rem; margin: 15px 20px; opacity: 0.9; }
         .publish-time { font-size: 1rem; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 15px; display: inline-block; margin-bottom: 10px; }
-        .timer { font-size: 6rem; font-weight: 800; margin: 5px 0; font-variant-numeric: tabular-nums; }
+        .timer { font-size: 4rem; font-weight: 800; margin: 5px 0; font-variant-numeric: tabular-nums; }
         
-        /* 按鈕縮小，提升協調度 */
         .button-container { width: 100%; display: flex; flex-direction: column; align-items: center; }
-        button { 
-            width: 70%; /* 縮小寬度 */
-            max-width: 280px; 
-            padding: 18px; /* 縮減內距 */
-            margin: 10px; 
-            font-size: 1.5rem; /* 字體調小一點 */
-            border: none; 
-            border-radius: 40px; 
-            cursor: pointer; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2); 
-            font-weight: 600; 
-            transition: all 0.2s ease;
-            -webkit-tap-highlight-color: transparent; 
-        }
         
-        .btn-main { background: white; color: #56ab2f; }
-        .btn-main:active { transform: translateY(2px); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        /* 並排按鈕樣式 */
+        .button-row { width: 90%; max-width: 400px; display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
         
-        .btn-reset { background: white; color: #e73827; font-size: 1.3rem; margin-top: 20px; }
+        button { border: none; border-radius: 40px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-weight: 600; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; }
+        
+        .btn-main { width: 70%; max-width: 280px; padding: 18px; margin: 10px; font-size: 1.5rem; background: white; color: #56ab2f; }
+        
+        /* 警示中按鈕：並排且縮小字體以容納文字 */
+        .btn-half { flex: 1; padding: 15px 5px; font-size: 1.2rem; background: white; }
+        .btn-extend { color: black; } /* 延長警示：黑色字 */
+        .btn-clear { color: #56ab2f; } /* 解除：綠色字 */
 
         .car-icon { font-size: 2.5rem; }
     </style>
@@ -60,11 +50,13 @@
     </div>
 
     <div id="reset-area" class="button-container" style="display:none;">
-        <button class="btn-reset" onclick="clearAlert()">❌ 已通過 (解除)</button>
+        <div class="button-row">
+            <button class="btn-half btn-extend" onclick="extendAlert()">🕒 延長警示</button>
+            <button class="btn-half btn-clear" onclick="clearAlert()">⭕ 已通過 (解除)</button>
+        </div>
     </div>
 
     <script>
-        // --- 請確認此處填入您的 Firebase Config ---
         const firebaseConfig = {
             apiKey: "AIzaSyDAgZJZ7HBbUF4_BfXC2sWr4shkJ4AX0h4",
             authDomain: "road-alert-bd5e1.firebaseapp.com",
@@ -81,16 +73,22 @@
         function startAlert(dir) {
             const now = Date.now();
             const expire = now + (5 * 60 * 1000); 
-            const timeStr = (new Date(now).getMonth() + 1).toString().padStart(2, '0') + '/' + new Date(now).getDate().toString().padStart(2, '0') + ' ' + new Date(now).getHours().toString().padStart(2, '0') + ':' + new Date(now).getMinutes().toString().padStart(2, '0');
+            // 修正：24小時制 日期/時間
+            const d = new Date(now);
+            const timeStr = `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
             const msg = (dir === 'up') ? "有車上山中，請勿出發" : "有車下山中，請勿進入";
             
-            db.set({ 
-                status: 'busy', 
-                direction: dir, 
-                expire_time: expire, 
-                publish_time: timeStr,
-                message: msg 
-            });
+            db.set({ status: 'busy', direction: dir, expire_time: expire, publish_time: timeStr, message: msg });
+        }
+
+        // 新增：延長警示功能
+        function extendAlert() {
+            const now = Date.now();
+            const expire = now + (5 * 60 * 1000);
+            db.update({ expire_time: expire });
+            const speech = new SpeechSynthesisUtterance("道路上持續有車輛行駛，請稍後");
+            speech.lang = 'zh-TW';
+            window.speechSynthesis.speak(speech);
         }
 
         function clearAlert() {
@@ -104,7 +102,7 @@
             const now = Date.now();
             if (data.status === 'busy' && data.expire_time > now) {
                 document.getElementById('bg').className = 'red';
-                document.getElementById('status-text').innerHTML = (data.direction === 'up' ? "⚠️&nbsp;&nbsp;車道警示&nbsp;&nbsp;⚠️" : "⚠️&nbsp;&nbsp;車道警示&nbsp;&nbsp;⚠️")
+                document.getElementById('status-text').innerHTML = "⚠️&nbsp;&nbsp;車道警示&nbsp;&nbsp;⚠️";
                 document.getElementById('info-text').innerText = data.message;
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
