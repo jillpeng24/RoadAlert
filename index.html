@@ -99,7 +99,7 @@
             const expire = now + (5 * 60 * 1000);
             db.update({ expire_time: expire });
             
-            const speech = new SpeechSynthesisUtterance("道路上持續有車輛行駛，請稍後");
+            const speech = new SpeechSynthesisUtterance("車隊通行中，請繼續等待");
             speech.lang = 'zh-TW';
             window.speechSynthesis.speak(speech);
         }
