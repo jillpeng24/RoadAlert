@@ -45,7 +45,11 @@
         .ok-icon { color: #28a745; font-size: 1.8rem; font-weight: bold; margin-bottom: 5px; } /* 綠色O */
 
         /* 「跟車」按鈕上的綠色實心箭頭（用畫的，iPhone 不會變成 emoji 框框） */
-        .follow-arrow { width: 32px; height: 32px; margin-bottom: 2px; }
+        .follow-arrow { width: 30px; height: 44px; flex-shrink: 0; }
+        /* 標題車數的數字：放大 1.1 倍，和「車」字之間留一點空隙 */
+        .car-num { font-size: 1.1em; font-weight: 800; line-height: 1; margin-right: 0.12em; }
+        /* 「跟車」按鈕：箭頭在左、兩行字在右 */
+        #btn-follow { flex-direction: row; gap: 4px; }
 
         .car-icon { font-size: 2.5rem; }
     </style>
@@ -119,18 +123,20 @@
             db.set({ status: 'clear' });
         }
 
-        // 車數文字：1 台「有車」，2～9 台「兩車」～「九車」，10 台以上「多車」
-        function carText(n) {
+        // 車數文字：1 台「有車」，2～9 台畫面顯示「2車」～「9車」，10 台以上「多車」
+        // 語音另外用國字「兩車」～「九車」，唸起來比較自然（不會唸成「二車」）
+        function carText(n, forSpeech) {
             n = n || 1;
             if (n <= 1) return "有車";
             if (n >= 10) return "多車";
-            return ["", "", "兩", "三", "四", "五", "六", "七", "八", "九"][n] + "車";
+            if (forSpeech) return ["", "", "兩", "三", "四", "五", "六", "七", "八", "九"][n] + "車";
+            return '<span class="car-num">' + n + '</span>車';
         }
 
         // 綠色實心箭頭：下山朝下，上山把同一個箭頭轉 180 度朝上
         function arrowSvg(dir) {
             const rotate = (dir === 'up') ? ' style="transform: rotate(180deg);"' : '';
-            return '<svg class="follow-arrow" viewBox="0 0 24 24"' + rotate + '>' +
+            return '<svg class="follow-arrow" viewBox="0 0 24 24" preserveAspectRatio="none"' + rotate + '>' +
                    '<path d="M9 2.5h6v9h5.5L12 21.5 3.5 11.5H9z" fill="#56ab2f" stroke="#56ab2f" stroke-width="1.2" stroke-linejoin="round"/></svg>';
         }
 
@@ -152,7 +158,7 @@
                 document.getElementById('info-text').innerText = waitText(data.direction);
                 // 只顯示和目前方向相同的「跟車」按鈕
                 document.getElementById('btn-follow').innerHTML =
-                    arrowSvg(data.direction) + '<span>跟車</span><span>' + ((data.direction === 'up') ? "上山" : "下山") + '</span>';
+                    arrowSvg(data.direction) + '<div>跟車<br>' + ((data.direction === 'up') ? "上山" : "下山") + '</div>';
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
                 document.getElementById('start-buttons').style.display = 'none';
@@ -160,7 +166,8 @@
                 
                 // 只有在非「延時按下」的情況下，才播報上/下山語音
                 if (window.lastExpire !== data.expire_time && !isExtending) {
-                    const speech = new SpeechSynthesisUtterance(title + "，" + waitText(data.direction));
+                    const spoken = carText(data.cars, true) + ((data.direction === 'up') ? "上山" : "下山");
+                    const speech = new SpeechSynthesisUtterance(spoken + "，" + waitText(data.direction));
                     speech.lang = 'zh-TW';
                     window.speechSynthesis.speak(speech);
                 }
