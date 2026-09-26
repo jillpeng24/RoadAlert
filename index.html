@@ -11,49 +11,32 @@
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; transition: background 0.5s ease; text-align: center; overflow: hidden; color: white; }
         .green { background: linear-gradient(135deg, #a8e063 0%, #56ab2f 100%); }
         .red { background: linear-gradient(135deg, #f85032 0%, #e73827 100%); }
-        
+
         h1 { font-size: 2.8rem; margin: 0; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .info { font-size: 1.3rem; margin: 15px 20px; opacity: 0.9; }
         .publish-time { font-size: 1rem; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 15px; display: inline-block; margin-bottom: 10px; }
         .timer { font-size: 5rem; font-weight: 800; margin: 5px 0; }
-        
-        .button-container { width: 100%; display: flex; flex-direction: column; align-items: center; }
-        
-        /* 調整為正方形按鈕的排版 */
-        .button-row { width: 90%; display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
-        
-        button { border: none; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-weight: 600; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; }
-        
-        /* 首頁長按鈕 */
-        .btn-main { width: 75%; max-width: 300px; padding: 20px; margin: 10px; font-size: 1.6rem; border-radius: 40px; background: white; color: #56ab2f; }
-        
-        /* 警示頁面的正方形按鈕 */
-        .btn-sq { 
-            width: 110px; 
-            height: 110px; 
-            border-radius: 20px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 1.3rem; 
-            background: white;
-            line-height: 1.4;
-        }
-        .btn-extend { color: black; } 
-        .btn-clear { color: #56ab2f; } 
-        .ok-icon { color: #28a745; font-size: 1.8rem; font-weight: bold; margin-bottom: 5px; } /* 綠色O */
-
-        /* 「跟車」按鈕上的綠色實心箭頭（用畫的，iPhone 不會變成 emoji 框框） */
-        .follow-arrow { width: 30px; height: 44px; flex-shrink: 0; }
+        .car-icon { font-size: 2.5rem; }
         /* 標題車數的數字：放大 1.1 倍，和「車」字之間留一點空隙 */
         .car-num { font-size: 1.1em; font-weight: 800; line-height: 1; margin-right: 0.12em; }
-        /* 「跟車」按鈕：箭頭在左、兩行字在右 */
-        #btn-follow { flex-direction: row; gap: 4px; padding: 0; }
-        /* 「跟車／上山」每一行都不准再拆開（避免 iPhone 把中文字一個一個斷行） */
-        .follow-text { white-space: nowrap; flex-shrink: 0; }
 
-        .car-icon { font-size: 2.5rem; }
+        .button-container { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .button-row { width: 90%; display: flex; justify-content: center; gap: 20px; margin-top: 20px; }
+
+        button { border: none; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-weight: 600; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; }
+
+        /* 首頁長按鈕 */
+        .btn-main { width: 75%; max-width: 300px; padding: 20px; margin: 10px; font-size: 1.6rem; border-radius: 40px; background: white; color: #56ab2f; }
+
+        /* 警示頁面的正方形按鈕 */
+        .btn-sq { width: 110px; height: 110px; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1.3rem; background: white; line-height: 1.4; }
+        .btn-extend { color: black; }
+        .btn-clear { color: #56ab2f; }
+
+        /* 「跟車」按鈕：綠色實心箭頭在左、兩行字在右 */
+        #btn-follow { flex-direction: row; gap: 4px; padding: 0; }
+        .follow-arrow { width: 30px; height: 44px; flex-shrink: 0; }
+        .follow-text { white-space: nowrap; flex-shrink: 0; }   /* 避免 iPhone 把中文字一個一個斷行 */
     </style>
 </head>
 <body class="green" id="bg">
@@ -90,39 +73,22 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database().ref('road_system');
-        let isExtending = false; // 新增開關：防止語音重疊
 
-        function startAlert(dir) {
-            isExtending = false; 
-            const now = Date.now();
-            const expire = now + (5 * 60 * 1000); 
-            const d = new Date(now);
-            const timeStr = `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-            const msg = (dir === 'up') ? "有車上山中，請勿出發" : "有車下山中，請勿進入";
-            db.set({ status: 'busy', direction: dir, expire_time: expire, publish_time: timeStr, message: msg, cars: 1 });
-        }
+        const ALERT_MS = 5 * 60 * 1000;   // 每次警示 5 分鐘
+        let isExtending = false;          // 自己按了跟車時，不再重複播報上／下山語音
+        let curDir = null;                // 目前警示的方向（給跟車語音用）
+        let lastExpire = null;
+        let timerInterval = null;
 
-        function extendAlert() {
-            isExtending = true; // 開啟延時狀態，暫停自動播報
-            const now = Date.now();
-            const expire = now + (5 * 60 * 1000);
-            db.transaction((d) => {
-                if (!d) return d;
-                if (d.status !== 'busy') return;   // 警示已解除就不動
-                d.cars = (d.cars || 1) + 1;
-                d.expire_time = expire;
-                return d;
-            });
-            
-            const speech = new SpeechSynthesisUtterance(
-                (window.curDir === 'up' ? "跟車上山" : "跟車下山") + "，已延長警示，可出發");
+        // ---------- 小工具 ----------
+        const $ = (id) => document.getElementById(id);
+        const pad = (n) => String(n).padStart(2, '0');
+        const dirWord = (dir) => (dir === 'up') ? "上山" : "下山";
+
+        function speak(text) {
+            const speech = new SpeechSynthesisUtterance(text);
             speech.lang = 'zh-TW';
             window.speechSynthesis.speak(speech);
-        }
-
-        function clearAlert() {
-            isExtending = false;
-            db.set({ status: 'clear' });
         }
 
         // 車數文字：1 台「有車」，2～9 台畫面顯示「2車」～「9車」，10 台以上「多車」
@@ -135,6 +101,11 @@
             return '<span class="car-num">' + n + '</span>車';
         }
 
+        // 中間小字：告訴另一邊的人去哪裡等
+        function waitText(dir) {
+            return (dir === 'up') ? "要下山者請在孔雀山停車場等候" : "要上山者請在新天鵝堡等候";
+        }
+
         // 綠色實心箭頭：下山朝下，上山把同一個箭頭轉 180 度朝上
         function arrowSvg(dir) {
             const rotate = (dir === 'up') ? ' style="transform: rotate(180deg);"' : '';
@@ -142,63 +113,80 @@
                    '<path d="M9 2.5h6v9h5.5L12 21.5 3.5 11.5H9z" fill="#56ab2f" stroke="#56ab2f" stroke-width="1.2" stroke-linejoin="round"/></svg>';
         }
 
-        // 中間小字：告訴另一邊的人去哪裡等
-        function waitText(dir) {
-            return (dir === 'up') ? "要下山者請在孔雀山停車場等候" : "要上山者請在新天鵝堡等候";
+        // ---------- 按鈕 ----------
+        function startAlert(dir) {
+            isExtending = false;
+            const now = Date.now();
+            const d = new Date(now);
+            const timeStr = `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            db.set({ status: 'busy', direction: dir, expire_time: now + ALERT_MS, publish_time: timeStr, cars: 1 });
         }
 
+        // 跟車：車數 +1、重新計時（用 transaction，兩人同時按也不會少算）
+        function extendAlert() {
+            isExtending = true;
+            const expire = Date.now() + ALERT_MS;
+            db.transaction((d) => {
+                if (!d) return d;
+                if (d.status !== 'busy') return;   // 警示已解除就不動
+                d.cars = (d.cars || 1) + 1;
+                d.expire_time = expire;
+                return d;
+            });
+            speak("跟車" + dirWord(curDir) + "，已延長警示，可出發");
+        }
+
+        function clearAlert() {
+            isExtending = false;
+            db.set({ status: 'clear' });
+        }
+
+        // ---------- 監聽資料庫，更新畫面 ----------
         db.on('value', (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
 
-            const now = Date.now();
-            if (data.status === 'busy' && data.expire_time > now) {
-                document.getElementById('bg').className = 'red';
-                window.curDir = data.direction;   // 記住目前方向，給「跟車」語音用
-                const title = carText(data.cars) + ((data.direction === 'up') ? "上山" : "下山");
-                document.getElementById('status-text').innerHTML = "⚠️&nbsp;&nbsp;" + title + "&nbsp;&nbsp;⚠️";
-                document.getElementById('info-text').innerText = waitText(data.direction);
-                // 只顯示和目前方向相同的「跟車」按鈕
-                document.getElementById('btn-follow').innerHTML =
-                    arrowSvg(data.direction) + '<div class="follow-text">跟車<br>' + ((data.direction === 'up') ? "上山" : "下山") + '</div>';
-                document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
-                document.getElementById('timer').style.display = 'block';
-                document.getElementById('start-buttons').style.display = 'none';
-                document.getElementById('reset-area').style.display = 'flex';
-                
-                // 只有在非「延時按下」的情況下，才播報上/下山語音
-                if (window.lastExpire !== data.expire_time && !isExtending) {
-                    const spoken = carText(data.cars, true) + ((data.direction === 'up') ? "上山" : "下山");
-                    const speech = new SpeechSynthesisUtterance(spoken + "，" + waitText(data.direction));
-                    speech.lang = 'zh-TW';
-                    window.speechSynthesis.speak(speech);
+            if (data.status === 'busy' && data.expire_time > Date.now()) {
+                curDir = data.direction;
+                const word = dirWord(data.direction);
+
+                $('bg').className = 'red';
+                $('status-text').innerHTML = "⚠️&nbsp;&nbsp;" + carText(data.cars) + word + "&nbsp;&nbsp;⚠️";
+                $('info-text').innerText = waitText(data.direction);
+                $('btn-follow').innerHTML = arrowSvg(data.direction) + '<div class="follow-text">跟車<br>' + word + '</div>';   // 只顯示同方向的跟車按鈕
+                $('publish-time').innerText = "發布時間：" + data.publish_time;
+                $('timer').style.display = 'block';
+                $('start-buttons').style.display = 'none';
+                $('reset-area').style.display = 'flex';
+
+                // 只有在非「自己按跟車」的情況下，才播報上／下山語音
+                if (lastExpire !== data.expire_time && !isExtending) {
+                    speak(carText(data.cars, true) + word + "，" + waitText(data.direction));
                 }
-                window.lastExpire = data.expire_time;
+                lastExpire = data.expire_time;
                 updateTimer(data.expire_time);
             } else {
                 isExtending = false;
-                document.getElementById('bg').className = 'green';
-                document.getElementById('status-text').innerHTML = '<span class="car-icon">🚙</span>&nbsp;&nbsp;道路暢通&nbsp;&nbsp;<span class="car-icon">🚙</span>';
-                document.getElementById('info-text').innerText = "請選擇行進方向";
-                document.getElementById('publish-time').innerText = "";
-                document.getElementById('timer').style.display = 'none';
-                document.getElementById('start-buttons').style.display = 'flex';
-                document.getElementById('reset-area').style.display = 'none';
-                if (window.timerInterval) clearInterval(window.timerInterval);
+                $('bg').className = 'green';
+                $('status-text').innerHTML = '<span class="car-icon">🚙</span>&nbsp;&nbsp;道路暢通&nbsp;&nbsp;<span class="car-icon">🚙</span>';
+                $('info-text').innerText = "請選擇行進方向";
+                $('publish-time').innerText = "";
+                $('timer').style.display = 'none';
+                $('start-buttons').style.display = 'flex';
+                $('reset-area').style.display = 'none';
+                if (timerInterval) clearInterval(timerInterval);
             }
         });
 
         function updateTimer(expire) {
-            if (window.timerInterval) clearInterval(window.timerInterval);
-            window.timerInterval = setInterval(() => {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
                 const remaining = Math.round((expire - Date.now()) / 1000);
                 if (remaining <= 0) {
-                    clearInterval(window.timerInterval);
+                    clearInterval(timerInterval);
                     db.update({ status: 'clear' });
                 } else {
-                    const m = Math.floor(remaining / 60);
-                    const s = remaining % 60;
-                    document.getElementById('timer').innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                    $('timer').innerText = `${Math.floor(remaining / 60)}:${pad(remaining % 60)}`;
                 }
             }, 1000);
         }
