@@ -44,6 +44,9 @@
         .btn-clear { color: #56ab2f; } 
         .ok-icon { color: #28a745; font-size: 1.8rem; font-weight: bold; margin-bottom: 5px; } /* 綠色O */
 
+        /* 「跟車」按鈕上的大箭頭（綠色） */
+        .follow-arrow { font-size: 2.4rem; line-height: 1; color: #56ab2f; margin-bottom: 4px; }
+
         .car-icon { font-size: 2.5rem; }
     </style>
 </head>
@@ -63,7 +66,7 @@
 
     <div id="reset-area" class="button-container" style="display:none;">
         <div class="button-row">
-            <button class="btn-sq btn-extend" onclick="extendAlert()">延長<br>警示</button>
+            <button id="btn-follow" class="btn-sq btn-extend" onclick="extendAlert()"></button>
             <button class="btn-sq btn-clear" onclick="clearAlert()">已通過<br>(解除)</button>
         </div>
     </div>
@@ -89,17 +92,24 @@
             const expire = now + (5 * 60 * 1000); 
             const d = new Date(now);
             const timeStr = `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-            const msg = (dir === 'up') ? "有車上山，要下山者請在孔雀山停車場等候" : "有車下山，要上山者請在新天鵝堡等候";
-            db.set({ status: 'busy', direction: dir, expire_time: expire, publish_time: timeStr, message: msg });
+            const msg = (dir === 'up') ? "有車上山中，請勿出發" : "有車下山中，請勿進入";
+            db.set({ status: 'busy', direction: dir, expire_time: expire, publish_time: timeStr, message: msg, cars: 1 });
         }
 
         function extendAlert() {
             isExtending = true; // 開啟延時狀態，暫停自動播報
             const now = Date.now();
             const expire = now + (5 * 60 * 1000);
-            db.update({ expire_time: expire });
+            db.transaction((d) => {
+                if (!d) return d;
+                if (d.status !== 'busy') return;   // 警示已解除就不動
+                d.cars = (d.cars || 1) + 1;
+                d.expire_time = expire;
+                return d;
+            });
             
-            const speech = new SpeechSynthesisUtterance("車隊通行中，請繼續等待");
+            const speech = new SpeechSynthesisUtterance(
+                (window.curDir === 'up' ? "跟車上山" : "跟車下山") + "，已延長警示，可出發");
             speech.lang = 'zh-TW';
             window.speechSynthesis.speak(speech);
         }
@@ -109,6 +119,19 @@
             db.set({ status: 'clear' });
         }
 
+        // 車數文字：1 台「有車」，2～9 台「兩車」～「九車」，10 台以上「多車」
+        function carText(n) {
+            n = n || 1;
+            if (n <= 1) return "有車";
+            if (n >= 10) return "多車";
+            return ["", "", "兩", "三", "四", "五", "六", "七", "八", "九"][n] + "車";
+        }
+
+        // 中間小字：告訴另一邊的人去哪裡等
+        function waitText(dir) {
+            return (dir === 'up') ? "要下山者，請在孔雀山停車場等候" : "要上山者，請在新天鵝堡等候";
+        }
+
         db.on('value', (snapshot) => {
             const data = snapshot.val();
             if (!data) return;
@@ -116,8 +139,15 @@
             const now = Date.now();
             if (data.status === 'busy' && data.expire_time > now) {
                 document.getElementById('bg').className = 'red';
-                document.getElementById('status-text').innerHTML = "⚠️&nbsp;&nbsp;車道警示&nbsp;&nbsp;⚠️";
-                document.getElementById('info-text').innerText = data.message;
+                window.curDir = data.direction;   // 記住目前方向，給「跟車」語音用
+                const title = carText(data.cars) + ((data.direction === 'up') ? "上山" : "下山");
+                document.getElementById('status-text').innerHTML = "⚠️&nbsp;&nbsp;" + title + "&nbsp;&nbsp;⚠️";
+                document.getElementById('info-text').innerText = waitText(data.direction);
+                // 只顯示和目前方向相同的「跟車」按鈕
+                document.getElementById('btn-follow').innerHTML =
+                    (data.direction === 'up')
+                        ? '<span class="follow-arrow">&#11014;</span><span>跟車上山</span>'
+                        : '<span class="follow-arrow">&#11015;</span><span>跟車下山</span>';
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
                 document.getElementById('start-buttons').style.display = 'none';
@@ -125,7 +155,7 @@
                 
                 // 只有在非「延時按下」的情況下，才播報上/下山語音
                 if (window.lastExpire !== data.expire_time && !isExtending) {
-                    const speech = new SpeechSynthesisUtterance(data.message);
+                    const speech = new SpeechSynthesisUtterance(title + "，" + waitText(data.direction));
                     speech.lang = 'zh-TW';
                     window.speechSynthesis.speak(speech);
                 }
