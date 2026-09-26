@@ -44,8 +44,8 @@
         .btn-clear { color: #56ab2f; } 
         .ok-icon { color: #28a745; font-size: 1.8rem; font-weight: bold; margin-bottom: 5px; } /* 綠色O */
 
-        /* 「跟車」按鈕上的大箭頭（綠色） */
-        .follow-arrow { font-size: 2.4rem; line-height: 1; color: #56ab2f; margin-bottom: 4px; }
+        /* 「跟車」按鈕上的綠色實心箭頭（用畫的，iPhone 不會變成 emoji 框框） */
+        .follow-arrow { width: 32px; height: 32px; margin-bottom: 2px; }
 
         .car-icon { font-size: 2.5rem; }
     </style>
@@ -127,6 +127,13 @@
             return ["", "", "兩", "三", "四", "五", "六", "七", "八", "九"][n] + "車";
         }
 
+        // 綠色實心箭頭：下山朝下，上山把同一個箭頭轉 180 度朝上
+        function arrowSvg(dir) {
+            const rotate = (dir === 'up') ? ' style="transform: rotate(180deg);"' : '';
+            return '<svg class="follow-arrow" viewBox="0 0 24 24"' + rotate + '>' +
+                   '<path d="M9 2.5h6v9h5.5L12 21.5 3.5 11.5H9z" fill="#56ab2f" stroke="#56ab2f" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+        }
+
         // 中間小字：告訴另一邊的人去哪裡等
         function waitText(dir) {
             return (dir === 'up') ? "要下山者，請在孔雀山停車場等候" : "要上山者，請在新天鵝堡等候";
@@ -145,9 +152,7 @@
                 document.getElementById('info-text').innerText = waitText(data.direction);
                 // 只顯示和目前方向相同的「跟車」按鈕
                 document.getElementById('btn-follow').innerHTML =
-                    (data.direction === 'up')
-                        ? '<span class="follow-arrow">&#11014;</span><span>跟車上山</span>'
-                        : '<span class="follow-arrow">&#11015;</span><span>跟車下山</span>';
+                    arrowSvg(data.direction) + '<span>跟車</span><span>' + ((data.direction === 'up') ? "上山" : "下山") + '</span>';
                 document.getElementById('publish-time').innerText = "發布時間：" + data.publish_time;
                 document.getElementById('timer').style.display = 'block';
                 document.getElementById('start-buttons').style.display = 'none';
